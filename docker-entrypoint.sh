@@ -12,7 +12,7 @@ function initialize() {
   # Required software that MUST be installed
   requiredPackages=("curl" "jq" "sed" "gcloud" "gpg2" "java")
   # Required gcloud components
-  requiredGcloudComponents=("beta") 
+  requiredGcloudComponents=() 
   # Provide usage data
   sendAnalytics=true
   # Does user want to do Binary Authorization
@@ -68,7 +68,7 @@ function usage() {
   echo "                                  Also, the following environment variable is applicable:"
   echo "                                  PRIVATE_KEY_PASSWD    Password used to access the private key"
   echo "                                                        specified in --binary.authorization.attestor.private.key.file"
-  echo "                              If usng PKIX encryption, the following arguments are applicable:"
+  echo "                              If usng PKIX encryption, the following arguments are applicable (Note: PGP encryption arguments will be ignored):"
   echo "                                  --binary.authorization.attestor.pkix.location"
   echo "                                  --binary.authorization.attestor.pkix.key.ring"
   echo "                                  --binary.authorization.attestor.pkix.key.name"
@@ -118,6 +118,7 @@ function parseArgs() {
         if isArgValue "${1}" ; then
           attestorId=${1}
           binaryAuthorizationEnabled=true
+          requiredGcloudComponents+=("beta")
         else
           exitFatal "Value required for --binary.authorization.attestor.id"
         fi
@@ -291,8 +292,8 @@ function gatherExternalData() {
     fi
      
     printf "Authorizing gcloud service account \t ... \t"
+    saEmail=$(cat "${attestorKeyFile}" 2>/dev/null | jq -r '.client_email')
     gcloud auth activate-service-account --key-file "${attestorKeyFile}" 2>/dev/null
-    saEmail=$(cat "${attestorKeyFile}" | jq -r '.client_email')
     if [ $? -ne 0 ]; then
       printf "${RED}FAILED (${saEmail})${NC}\n"
       returnVal=false
@@ -316,7 +317,7 @@ function gatherExternalData() {
     
     if ${usePGP} ; then
       printf "Gather attestor data \t ... \t"
-      attestorRawData=$(gcloud --format=json beta container binauthz attestors describe "${attestorId}" | jq  '.userOwnedDrydockNote | select(.publicKeys | length >= 1) | .publicKeys[]')
+      attestorRawData=$(gcloud --format=json beta container binauthz attestors describe "${attestorId}" 2>/dev/null | jq  '.userOwnedDrydockNote | select(.publicKeys | length >= 1) | .publicKeys[]')
       if [ ! -z "${attestorRawData}" ]; then
         if [ -a "${ATTESTOR_PUBLIC_KEY_FILE}" ]; then
           rm -rf "${ATTESTOR_PUBLIC_KEY_FILE}"
@@ -336,9 +337,9 @@ function gatherExternalData() {
     fi
     
     printf "Gather image digest data \t ... \t"
-    imageDigest=$(gcloud --format=json container images describe "${imageTag}" | jq -r '.image_summary.fully_qualified_digest')
+    imageDigest=$(gcloud --format=json container images describe "${imageTag}" 2>/dev/null | jq -r '.image_summary.fully_qualified_digest')
     if [ -z "${imageDigest}" ]; then
-      printf "${RED}FAILED${NC}\n"
+      printf "${RED}FAILED (Was the Servive Account properly authorized?)${NC}\n"
       returnVal=false
     else
       printf "${GREEN}PASSED${NC}\n"
