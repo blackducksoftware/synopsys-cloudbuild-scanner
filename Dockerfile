@@ -6,9 +6,7 @@ RUN \
     apt-get clean && \
     apt-get -y update && \
     apt-get --fix-broken -y install && \
-    apt-get -y install curl jq python2.7 gnupg2 && \
-    \
-    ./google-cloud-sdk/bin/gcloud components install beta --quiet
+    apt-get -y install curl jq python2.7 gnupg2
 ENV PATH $PATH:/google-cloud-sdk/bin
 CMD [ "-hv" ]
 ENTRYPOINT [ "/blackduck-cloudbuild-scanner/docker-entrypoint.sh" ]

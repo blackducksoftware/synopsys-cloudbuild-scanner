@@ -25,7 +25,12 @@ import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
 task dockerBuild(type: DockerBuildImage) {
   group 'distribution'
   description 'Creates the Docker image'
-  tags.add("gcr.io/blackduck-dev/${project.name}:${dkrLabelVersion}")
+    
+  if (!project.hasProperty("repo")) {
+    throw new StopExecutionException("Must provide repository location (eg. 'gcr.io/your_repo') with '-Prepo=<repoName>' argument")
+  }
+  
+  tags.add("${repo}/${project.name}:${dkrLabelVersion}")
   buildArgs.put("VERSION", "${dkrLabelVersion}")
   buildArgs.put("LASTCOMMIT", "${dkrLabelCommit}")
   buildArgs.put("BUILDTIME", "${dkrLabelDate}")
