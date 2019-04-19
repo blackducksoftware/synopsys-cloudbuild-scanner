@@ -18,6 +18,10 @@ ext {
   dkrLabelCommit = project.hasProperty('dkrLabelCommit') ? dkrLabelCommit : '--empty--'
   dkrLabelDate = project.hasProperty('dkrLabelDate') ? dkrLabelDate : '--empty--'
   dkrLabelVersion = project.hasProperty('dkrLabelVersion') ? dkrLabelVersion : version
+  dkrLabelDesc = project.hasProperty('dkrLabelDesc') ? dkrLabelDesc : ''
+  dkrLabelSummary = project.hasProperty('dkrLabelSummary') ? dkrLabelSummary : '--empty--'
+  dkrLabelVendor = project.hasProperty('dkrLabelVendor') ? dkrLabelVendor : '--empty--'
+  dkrLabelName = project.hasProperty('dkrLabelName') ? dkrLabelName : '--empty--'
 }
 
 import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
@@ -34,6 +38,10 @@ task dockerBuild(type: DockerBuildImage) {
   buildArgs.put("VERSION", "${dkrLabelVersion}")
   buildArgs.put("LASTCOMMIT", "${dkrLabelCommit}")
   buildArgs.put("BUILDTIME", "${dkrLabelDate}")
+  buildArgs.put("NAME", "${dkrLabelName}")
+  buildArgs.put("VENDOR", "${dkrLabelVendor}")
+  buildArgs.put("SUMMARY", "${dkrLabelSummary}")
+  buildArgs.put("DESC", "${dkrLabelDesc}")
   inputDir = file(".")
   pull = true
   noCache = true
