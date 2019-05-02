@@ -21,6 +21,8 @@ function initialize() {
   attestorId=
   # Attestor Service Account key file location
   attestorKeyFile=
+  # ID of the project for the authorized service account
+  projectId=
   # Detect arguments
   detectArgs=
   # Fully qualified Image Digest (ie, image_path@image_digest)
@@ -41,6 +43,13 @@ function initialize() {
   pkixKey=
   # PKIX key version in KMS
   pkixKeyVersion=
+  
+  # Variables that may be used if analytics is enabled
+  blackduckUrl=
+  blackduckUser=
+  blackduckPasswd=
+  blackduckApiToken=
+  
 }
 
 function exitFatal() {
@@ -293,6 +302,7 @@ function gatherExternalData() {
      
     printf "Authorizing gcloud service account \t ... \t"
     saEmail=$(cat "${attestorKeyFile}" 2>/dev/null | jq -r '.client_email')
+    projectId=$(cat "${attestorKeyFile}" 2>/dev/null | jq -r '.project_id')
     gcloud auth activate-service-account --key-file "${attestorKeyFile}" 2>/dev/null
     if [ $? -ne 0 ]; then
       printf "${RED}FAILED (${saEmail})${NC}\n"
@@ -371,7 +381,7 @@ function signAndCreateAttestation() {
     gcloud beta container binauthz attestations create --artifact-url="${imageDigest}" --attestor="${attestorId}" --signature-file="${ATTESTATION_SIGNATURE}" --pgp-key-fingerprint="${attestorFingerprint}"
   else
     # Using PKIX
-    gcloud alpha container binauthz attestations sign-and-create --artifact-url="${imageDigest}" --attestor="${attestorId}" --keyversion-location="${pkixLocation}" --keyversion-keyring="${pkixKeyRing}" --keyversion-key="${pkixKey}" --keyversion="${pkixKeyVersion}"
+    gcloud alpha container binauthz attestations sign-and-create --project="${projectId}" --artifact-url="${imageDigest}" --attestor="${attestorId}" --keyversion-location="${pkixLocation}" --keyversion-keyring="${pkixKeyRing}" --keyversion-key="${pkixKey}" --keyversion="${pkixKeyVersion}"
   fi
 }
 
@@ -429,12 +439,15 @@ function main() {
      exitFatal "Not enough arguments" 
   fi
   /bin/bash <(curl -s https://detect.synopsys.com/detect.sh) "${detectArgs}"
+  detectReturn=$? # Save off the return value from running Detect as it will be the return value from the script
   
   # Send the return value from Detect to determone if an attestation needs to be generated
-  generateAttestation $?
+  generateAttestation ${detectReturn}
   
   sendAnalytics
+  
+  return ${detectReturn}
 }
 
 initialize
-main $@
+main $@ 
